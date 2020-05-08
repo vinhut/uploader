@@ -1,0 +1,17 @@
+apiVersion: skaffold/v2alpha4
+kind: Config
+metadata:
+  name: uploader
+build:
+  artifacts:
+  - image: docker.pkg.github.com/vinhut/uploader
+deploy:
+  helm:
+    releases:
+    - name: uploader-service
+      chartPath: ../kube-deploy/charts/uploader-service
+      valuesFiles: 
+        - ../kube-deploy/charts/uploader-service/values.yaml
+      values:
+        imageName: docker.pkg.github.com/vinhut/uploader
+
