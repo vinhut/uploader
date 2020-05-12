@@ -1,4 +1,4 @@
-module gitlab.com/vin_hut/uploader
+module github.com/vinhut/uploader
 
 go 1.13
 
