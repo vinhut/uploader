@@ -2,13 +2,17 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"os"
+	opentracing "github.com/opentracing/opentracing-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
+	"github.com/uber/jaeger-lib/metrics"
 
 	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 var SERVICE_NAME = "uploader-service"
@@ -58,6 +62,26 @@ type Data struct {
 
 func setupRouter() *gin.Engine {
 
+	var JAEGER_COLLECTOR_ENDPOINT = os.Getenv("JAEGER_COLLECTOR_ENDPOINT")
+	cfg := jaegercfg.Configuration{
+		ServiceName: "uploader-service",
+		Sampler: &jaegercfg.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &jaegercfg.ReporterConfig{
+			LogSpans:          true,
+			CollectorEndpoint: JAEGER_COLLECTOR_ENDPOINT,
+		},
+	}
+	jLogger := jaegerlog.StdLogger
+	jMetricsFactory := metrics.NullFactory
+	tracer, _, _ := cfg.NewTracer(
+		jaegercfg.Logger(jLogger),
+		jaegercfg.Metrics(jMetricsFactory),
+	)
+	opentracing.SetGlobalTracer(tracer)
+
 	router := gin.Default()
 
 	router.GET(SERVICE_NAME+"/ping", func(c *gin.Context) {
@@ -65,6 +89,8 @@ func setupRouter() *gin.Engine {
 	})
 
 	router.POST(SERVICE_NAME+"/upload", func(c *gin.Context) {
+
+		span := tracer.StartSpan("upload")
 
 		result, upload_err := c.FormFile("uploadfile")
 		if upload_err != nil {
@@ -96,8 +122,10 @@ func setupRouter() *gin.Engine {
 			json.Unmarshal([]byte(body), &imageResponse)
 			image_url := imageResponse.Data.URL
 			c.String(200, image_url)
+			span.Finish()
 		} else {
 			c.String(403, "not uploaded")
+			span.Finish()
 		}
 
 	})
