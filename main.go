@@ -84,7 +84,7 @@ func setupRouter() *gin.Engine {
 
 	router := gin.Default()
 
-	router.GET(SERVICE_NAME+"/ping", func(c *gin.Context) {
+	router.GET("/ping", func(c *gin.Context) {
 		c.String(200, "OK")
 	})
 
